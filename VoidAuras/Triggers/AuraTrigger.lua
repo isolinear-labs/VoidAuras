@@ -82,6 +82,25 @@ local function HandlePrivateAuraRemoved(spellId)
 end
 
 -- ---------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
+-- Filter detection without touching the tainted isHelpful / isHarmful fields
+-- ---------------------------------------------------------------------------
+-- In WoW 12.x, isHelpful/isHarmful are "secret" booleans that raise a taint
+-- error when compared in addon Lua. GetAuraDataByIndex with an explicit filter
+-- string is not tainted, so we use it to discover which bucket an instance
+-- belongs to.
+local function FindFilterForInstance(unit, auraInstanceID)
+    for _, f in ipairs({ "HELPFUL", "HARMFUL" }) do
+        local idx = 1
+        while true do
+            local d = C_UnitAuras.GetAuraDataByIndex(unit, idx, f)
+            if not d then break end
+            if d.auraInstanceID == auraInstanceID then return f end
+            idx = idx + 1
+        end
+    end
+end
+
 -- Normal aura processing
 -- ---------------------------------------------------------------------------
 local function HandleAddedAura(unit, aura)
@@ -100,17 +119,8 @@ local function HandleAddedAura(unit, aura)
         return
     end
 
-    -- UNIT_AURA addedAuras fields (isHelpful, isHarmful) are secret booleans that
-    -- cannot be used in any conditional. Re-fetch via the explicit API which
-    -- returns normal, non-secret values (confirmed: HandleUpdatedAura does this
-    -- with the same API and isHelpful is accessible there).
-    if aura.auraInstanceID then
-        local fresh = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, aura.auraInstanceID)
-        if fresh then aura = fresh end
-    end
-
-    local filter
-    if aura.isHelpful == true then filter = "HELPFUL" else filter = "HARMFUL" end
+    local filter = FindFilterForInstance(unit, aura.auraInstanceID)
+    if not filter then return end
     AuraTrigger.state[unit][filter][aura.auraInstanceID] = aura
     VA.Events:Fire(VA.E.AURA_ADDED, unit, filter, aura)
 end
@@ -133,9 +143,19 @@ local function HandleUpdatedAura(unit, auraInstanceID)
         return
     end
 
+    -- For updates, the aura was already bucketed on ADDED — check state first
+    -- to avoid the tainted-field scan on the hot path.
+    local s = AuraTrigger.state[unit]
     local filter
-    if aura.isHelpful == true then filter = "HELPFUL" else filter = "HARMFUL" end
-    AuraTrigger.state[unit][filter][auraInstanceID] = aura
+    if s.HELPFUL[auraInstanceID] then
+        filter = "HELPFUL"
+    elseif s.HARMFUL[auraInstanceID] then
+        filter = "HARMFUL"
+    else
+        filter = FindFilterForInstance(unit, auraInstanceID)
+        if not filter then return end
+    end
+    s[filter][auraInstanceID] = aura
     VA.Events:Fire(VA.E.AURA_UPDATED, unit, filter, aura)
 end
 
