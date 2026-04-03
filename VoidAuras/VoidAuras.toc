@@ -1,0 +1,33 @@
+## Interface: 120001
+## Title: VoidAuras
+## Notes: Aura tracking and display rebuilt for WoW 12.x private auras.
+## Author: VoidAuras Contributors
+## Version: 0.1.0
+## DefaultState: Enabled
+## LoadOnDemand: 0
+## SavedVariables: VoidAurasSaved
+
+# Core
+Core\Init.lua
+Core\Events.lua
+Core\SavedData.lua
+Core\VersionCheck.lua
+Core\SpellIDDisplay.lua
+
+# Style — must load before Display and Options
+Options\Theme.lua
+Options\Widgets.lua
+
+# Triggers
+Triggers\AuraTrigger.lua
+Triggers\CooldownTrigger.lua
+Triggers\ResourceTrigger.lua
+
+# Display
+Display\DisplayPrototype.lua
+Display\Icon.lua
+Display\Bar.lua
+Display\Text.lua
+
+# Options panel (last — depends on everything above)
+Options\Panel.lua
