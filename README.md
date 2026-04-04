@@ -1,5 +1,7 @@
 # VoidAuras [Beta]
 
+#### _Note: This project is on hold until Blizzard updates personal auras to be accessable in combat._
+
 ![Demo](Example.png)
 
 A lightweight aura tracker built within the new PrivateAura constraints enforced by Blizzard. VoidAuras monitors your buffs and debuffs, and displays them as icons, progress bars, or text overlays.
